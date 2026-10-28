@@ -47,6 +47,7 @@ from litellm.proxy.litellm_pre_call_utils import (
 from litellm.proxy.management.teams.authz import is_team_admin
 from litellm.proxy.management_endpoints.common_daily_activity import daily_activity_scope
 from litellm.proxy.management_helpers.auto_router_permissions import (
+    authorize_auto_router_environment_references,
     authorize_member_auto_router_dependencies,
     authorize_member_auto_router_team,
     validate_member_auto_router_config,
@@ -402,6 +403,8 @@ async def validate_complexity_router_config(
     """
     member_team: Final = await _authorize_router_dry_run(user_api_key_dict=user_api_key_dict, team_id=data.team_id)
 
+    authorize_auto_router_environment_references(data.complexity_router_config, user_api_key_dict)
+
     from litellm.router_utils.auto_router_model_naming import (
         validate_complexity_router_config_write,
     )
@@ -560,6 +563,10 @@ async def preview_auto_router_routing(
             detail={"error": CommonProxyErrors.no_llm_router.value},
         )
     resolved: Final = await _resolve_saved_routing_test(data, user_api_key_dict, llm_router)
+    if data.saved_model_id is None:
+        authorize_auto_router_environment_references(
+            data.complexity_router_config.model_dump(exclude_none=True), user_api_key_dict
+        )
     actor: Final = (
         await _authorize_member_dry_run_config(
             config=resolved.complexity_router_config.model_dump(exclude_none=True),

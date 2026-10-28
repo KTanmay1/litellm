@@ -1425,12 +1425,22 @@ class ComplexityRouter(CustomLogger):
                 http_client=get_async_httpx_client(httpxSpecialProvider.PassThroughEndpoint),
                 provider="databricks",
             )
-        api_key: Final = config.api_key or get_secret_str("TYPESAFE_API_KEY")
-        if not api_key:
+        api_key: Final = (
+            get_secret_str(config.api_key)
+            if config.api_key is not None and config.api_key.startswith("os.environ/")
+            else config.api_key or get_secret_str("TYPESAFE_API_KEY")
+        )
+        if not api_key or not api_key.strip():
             raise ValueError(
                 "opensource_classifier_config.api_key or TYPESAFE_API_KEY is required for classifier_type 'oss_classifier'"
             )
-        api_base: Final = config.api_base or get_secret_str("TYPESAFE_API_BASE") or "https://api.typesafe.ai"
+        api_base: Final = (
+            get_secret_str(config.api_base)
+            if config.api_base is not None and config.api_base.startswith("os.environ/")
+            else config.api_base or get_secret_str("TYPESAFE_API_BASE") or "https://api.typesafe.ai"
+        )
+        if not api_base or not api_base.strip():
+            raise ValueError("opensource_classifier_config.api_base must resolve to a non-empty value")
         return HttpJevClassifierClient(
             api_key=api_key,
             api_base=api_base,
